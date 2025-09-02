@@ -1,12 +1,13 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { ChildProcess, exec } from 'node:child_process';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getPreferenceValues, environment } from '@raycast/api';
 import { Logger } from './logger';
 import { GlobalPreferences } from './types';
 
-export type LoadingState = 'idle' | 'listening' | 'processing' | 'generating' | 'ready' | 'error';
+export type LoadingState = 'idle' | 'initializing' | 'listening' | 'processing' | 'generating' | 'ready' | 'error';
+type ChildProcessUpdate =
+	| { status: 'state_change'; state: LoadingState; payload?: unknown }
+	| { status: 'error' | 'info'; message: string };
 
 export interface DictationPreferences extends GlobalPreferences {
 	tmp_wav_directory: string;
@@ -14,21 +15,17 @@ export interface DictationPreferences extends GlobalPreferences {
 }
 
 export class RecordScriptProcess {
-	process: ChildProcess | null = null;
-	outputName: string;
 	onFinishCallback: ((text: string) => void) | null;
 	onLoadingCallback: ((state: LoadingState) => void) | null;
 	logger: Logger;
-	private pythonPath: string;
 
-	constructor(outputName: string) {
-		this.pythonPath = path.join(environment.assetsPath, '.venv/bin/python');
-		this.outputName = outputName;
+	private process: ChildProcess | null = null;
+
+	constructor() {
+		const { log_file_path } = getPreferenceValues<DictationPreferences>();
 		this.onFinishCallback = null;
 		this.onLoadingCallback = null;
-		const { log_file_path } = getPreferenceValues<DictationPreferences>();
 		this.logger = new Logger(log_file_path, environment.isDevelopment);
-		this.assertConfigurationCorrect();
 	}
 
 	onFinish(callback: (text: string) => void) {
@@ -39,66 +36,69 @@ export class RecordScriptProcess {
 		this.onLoadingCallback = callback;
 	}
 
-	assertConfigurationCorrect() {
-		if (!fs.existsSync(this.pythonPath))
-			throw new Error(`Python interpreter not found at path: ${this.pythonPath}`);
-	}
-
-	getWavPath() {
-		const { tmp_wav_directory: wavDirectory } = getPreferenceValues<DictationPreferences>();
-		if (!fs.existsSync(wavDirectory)) {
-			fs.mkdirSync(wavDirectory, { recursive: true });
-		}
-		const filename = `${this.outputName.replace(/\.wav$/, '')}.wav`;
-		return `${wavDirectory}/${filename}`;
-	}
-
 	record() {
-		const pythonPath = this.pythonPath;
-		this.onLoadingCallback?.('listening');
-		this.process = exec(`${pythonPath} record.py --samplerate=16000 --output="${this.getWavPath()}"`, {
+		console.log(`[RecordScriptProcess] Started recording.`);
+
+		this.process = exec(`/Users/tkasperek/.config/dictate/.venv/bin/python transcribe.py`, {
 			cwd: environment.assetsPath,
 		});
-		// this.process?.stdout?.on("data", () => {});
-		this.process.on('exit', () => {
-			this.generate();
-			this.onLoadingCallback?.('processing');
+
+		this.process.stderr?.on('data', (err) => {
+			console.error(`Error from child process: ${err}`);
 		});
-	}
 
-	complete(text: string) {
-		try {
-			text = text.trim();
-			this.onLoadingCallback?.('ready');
-			this.onFinishCallback?.(text);
-		} catch {
-			this.onLoadingCallback?.('error');
-		}
-	}
+		this.process.on('exit', (code) => {
+			console.log(`Child process exited with code: ${code}`);
+			this.kill();
+			this.onLoadingCallback!('error');
+		});
 
-	generate() {
-		let text = '';
-		this.process = exec(`${this.pythonPath} transcribe.py ${this.getWavPath()}`, {
-			cwd: environment.assetsPath,
+		this.process.on('message', (msg) => {
+			console.log(`Message from child process: ${msg}`);
 		});
 
 		this.process.stdout?.on('data', (data) => {
-			console.log(`Returned: ${data}`);
-			// this.complete(data);
-			text += data;
-		});
+			try {
+				const lines = data.toString().trim().split('\n');
 
-		this.process.on('exit', () => {
-			// this.complete();
-			console.log('Exit!!');
-			this.complete(text);
+				for (const line of lines) {
+					if (line.trim()) {
+						const parsedMessage = JSON.parse(line.trim()) as ChildProcessUpdate;
+
+						if (parsedMessage.status === 'error') {
+							this.onLoadingCallback?.('error');
+							this.kill();
+						}
+
+						if (parsedMessage.status === 'state_change') {
+							this.onLoadingCallback?.(parsedMessage.state);
+							if (parsedMessage.state === 'ready' && parsedMessage.payload) {
+								console.log(`State changed with payload: ${parsedMessage.payload}`);
+								this.onFinishCallback?.(parsedMessage.payload as string);
+							}
+						}
+					}
+				}
+			} catch (error) {
+				console.error(`Error parsing message from child process: ${error}`);
+				this.onLoadingCallback?.('error');
+			}
 		});
 	}
 
-	finish() {
+	finishRecording() {
+		console.log('FinishRecording');
 		if (this.process) {
 			this.process.stdin?.write('\n');
 		}
+	}
+
+	/**
+	 * Kills the child process and resets the loading state.
+	 */
+	kill() {
+		this.process?.kill();
+		this.onLoadingCallback?.('idle');
 	}
 }
 
@@ -110,35 +110,40 @@ export function useDictation() {
 
 	const startDictation = useCallback(() => {
 		setTranscript('');
-		setLoadingState('listening');
+		setLoadingState('initializing');
 	}, []);
 
 	const reset = useCallback(() => {
 		setTranscript('');
 		setLoadingState('idle');
+		processRef.current?.kill();
 		processRef.current = null;
 	}, []);
 
 	// Call this to finish recording (send newline to record.py)
 	const finishDictation = useCallback(() => {
 		if (loadingState === 'listening' && processRef.current) {
-			processRef.current.finish();
+			processRef.current.finishRecording();
 		}
 	}, [loadingState]);
 
 	useEffect(() => {
-		if (loadingState === 'listening' && !processRef.current) {
-			const recordProcess = new RecordScriptProcess(`raycast_${Date.now()}.wav`);
+		if (loadingState === 'initializing' && !processRef.current) {
+			const recordProcess = new RecordScriptProcess();
 			processRef.current = recordProcess;
+
 			recordProcess.onFinish((text) => {
 				setTranscript(text);
 				setLoadingState('ready');
 			});
+
 			recordProcess.onLoading((state) => {
 				setLoadingState(state);
 			});
+
 			recordProcess.record();
 		}
+
 		if (loadingState === 'ready' || loadingState === 'error') {
 			processRef.current = null;
 		}

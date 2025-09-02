@@ -12,9 +12,17 @@ function getMarkdownText({
 	message: string;
 	pasteMessage: string | null;
 }) {
+	if (loadingState === 'initializing') {
+		return dedent(`
+			## Dictate
+
+			🔄 **Initializing...**
+		`);
+	}
+
 	if (loadingState === 'listening') {
 		return dedent(`
-			## Whisper
+			## Dictate
 
 			👂 **Listening...**
 
@@ -26,7 +34,7 @@ function getMarkdownText({
 	}
 	if (loadingState === 'processing') {
 		return dedent(`
-			## Whisper
+			## Dictate
 
 			⚙️ **Processing your audio...**
 
@@ -35,7 +43,7 @@ function getMarkdownText({
 	}
 	if (pasteMessage != null) {
 		return dedent(`
-			## Whisper
+			## Dictate
 
 			**Your message is:**
 
@@ -44,14 +52,13 @@ function getMarkdownText({
 			${pasteMessage ? `> ${pasteMessage}` : '<empty>'}
 
 			---
-
 			- Press **Paste** to insert this text.
 			- Press **Option+A** to dictate again.
 			- Press **Copy** to copy to clipboard.
 		`);
 	}
 	return dedent(`
-		## Whisper
+		## Dictate
 
 		${message}
 
@@ -69,7 +76,6 @@ export default function Dictate() {
 	useEffect(() => {
 		if (dictationRef.current) return;
 		dictationRef.current = true;
-		console.log('Starting');
 		startDictation();
 	}, []);
 

@@ -9,7 +9,7 @@
 
 # Desired Python interpreter (override with: make PYTHON=/path/to/python3.12 install)
 PYTHON ?= python3.12
-VENV := assets/.venv
+VENV := /Users/tkasperek/.config/dictate/.venv
 BIN := $(VENV)/bin
 PY := $(BIN)/python
 PIP := $(BIN)/pip
