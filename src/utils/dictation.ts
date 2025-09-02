@@ -1,4 +1,4 @@
-import { ChildProcess, exec, execFile } from 'node:child_process';
+import { ChildProcess, spawn } from 'node:child_process';
 import path from 'node:path';
 import { getPythonInterpreter } from './pythonEnv';
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -22,6 +22,13 @@ export class RecordScriptProcess {
 	logger: Logger;
 
 	private process: ChildProcess | null = null;
+	private stdoutBuffer = '';
+	private spawnStart?: bigint;
+	private firstStdoutAt?: number;
+	private readyAt?: number;
+
+	// Cache script path (assetsPath is stable during runtime)
+	private static scriptPath = path.join(environment.assetsPath, 'transcribe.py');
 
 	constructor() {
 		const { log_file_path } = getPreferenceValues<DictationPreferences>();
@@ -39,10 +46,19 @@ export class RecordScriptProcess {
 	}
 
 	record() {
+		// Prevent spawning multiple concurrent processes
+		if (this.process) {
+			this.logger.log('record_already_running', {});
+			return;
+		}
 		const python = getPythonInterpreter(this.logger);
-		const script = path.join(environment.assetsPath, 'transcribe.py');
-		this.process = execFile(python, [script], {
+		const script = RecordScriptProcess.scriptPath;
+		this.spawnStart = globalThis.process.hrtime.bigint();
+		this.logger.log('spawn_start', { script });
+		// Use spawn for lower overhead and streaming output without shell wrapping.
+		this.process = spawn(python, [script], {
 			cwd: environment.assetsPath,
+			stdio: ['pipe', 'pipe', 'pipe'],
 		});
 
 		this.process.stderr?.on('data', (err) => {
@@ -56,30 +72,44 @@ export class RecordScriptProcess {
 		});
 
 		this.process.stdout?.on('data', (data) => {
-			try {
-				const lines = data.toString().trim().split('\n');
-
-				for (const line of lines) {
-					if (line.trim()) {
-						const parsedMessage = JSON.parse(line.trim()) as ChildProcessUpdate;
-
-						if (parsedMessage.status === 'error') {
-							this.onLoadingCallback?.('error');
-							this.kill();
-						}
-
-						if (parsedMessage.status === 'state_change') {
-							this.onLoadingCallback?.(parsedMessage.state);
-							if (parsedMessage.state === 'ready' && parsedMessage.payload) {
-								console.log(`State changed with payload: ${parsedMessage.payload}`);
-								this.onFinishCallback?.(parsedMessage.payload as string);
+			if (!this.firstStdoutAt && this.spawnStart) {
+				const diff = Number(globalThis.process.hrtime.bigint() - this.spawnStart) / 1e6;
+				this.firstStdoutAt = diff;
+				this.logger.log('first_stdout', { ms: diff });
+			}
+			this.stdoutBuffer += data.toString();
+			let newlineIndex;
+			while ((newlineIndex = this.stdoutBuffer.indexOf('\n')) !== -1) {
+				const line = this.stdoutBuffer.slice(0, newlineIndex).trim();
+				this.stdoutBuffer = this.stdoutBuffer.slice(newlineIndex + 1);
+				if (!line) continue;
+				try {
+					const parsedMessage = JSON.parse(line) as ChildProcessUpdate;
+					if (parsedMessage.status === 'error') {
+						this.logger.log('child_error', { message: parsedMessage.message });
+						this.onLoadingCallback?.('error');
+						this.kill();
+						return;
+					}
+					if (parsedMessage.status === 'state_change') {
+						this.logger.log('state_change', { state: parsedMessage.state });
+						this.onLoadingCallback?.(parsedMessage.state);
+						if (parsedMessage.state === 'ready' && parsedMessage.payload) {
+							if (this.spawnStart && !this.readyAt) {
+								const total = Number(globalThis.process.hrtime.bigint() - this.spawnStart) / 1e6;
+								this.readyAt = total;
+								this.logger.log('ready_timing', {
+									spawn_to_first_stdout_ms: this.firstStdoutAt,
+									spawn_to_ready_ms: total,
+								});
 							}
+							this.onFinishCallback?.(parsedMessage.payload as string);
 						}
 					}
+				} catch (error) {
+					this.logger.log('parse_error', { error: (error as Error).message, line });
+					this.onLoadingCallback?.('error');
 				}
-			} catch (error) {
-				console.error(`Error parsing message from child process: ${error}`);
-				this.onLoadingCallback?.('error');
 			}
 		});
 	}
@@ -95,7 +125,15 @@ export class RecordScriptProcess {
 	 * Kills the child process and resets the loading state.
 	 */
 	kill() {
-		this.process?.kill();
+		if (this.process) {
+			try {
+				this.process.kill();
+			} catch (e) {
+				this.logger.log('kill_error', { error: (e as Error).message });
+			}
+		}
+		this.process = null;
+		this.stdoutBuffer = '';
 		this.onLoadingCallback?.('idle');
 	}
 }
