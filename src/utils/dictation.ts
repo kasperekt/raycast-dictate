@@ -1,4 +1,4 @@
-import { ChildProcess, exec } from 'node:child_process';
+import { ChildProcess, exec, execFile } from 'node:child_process';
 import path from 'node:path';
 import { getPythonInterpreter } from './pythonEnv';
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -38,12 +38,10 @@ export class RecordScriptProcess {
 		this.onLoadingCallback = callback;
 	}
 
-		record() {
-		console.log(`[RecordScriptProcess] Started recording.`);
-
+	record() {
 		const python = getPythonInterpreter(this.logger);
 		const script = path.join(environment.assetsPath, 'transcribe.py');
-		this.process = exec(`${python} ${script}`, {
+		this.process = execFile(python, [script], {
 			cwd: environment.assetsPath,
 		});
 
@@ -55,10 +53,6 @@ export class RecordScriptProcess {
 			console.log(`Child process exited with code: ${code}`);
 			this.kill();
 			this.onLoadingCallback!('error');
-		});
-
-		this.process.on('message', (msg) => {
-			console.log(`Message from child process: ${msg}`);
 		});
 
 		this.process.stdout?.on('data', (data) => {
