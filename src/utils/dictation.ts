@@ -1,4 +1,6 @@
 import { ChildProcess, exec } from 'node:child_process';
+import path from 'node:path';
+import { getPythonInterpreter } from './pythonEnv';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getPreferenceValues, environment } from '@raycast/api';
 import { Logger } from './logger';
@@ -36,10 +38,12 @@ export class RecordScriptProcess {
 		this.onLoadingCallback = callback;
 	}
 
-	record() {
+		record() {
 		console.log(`[RecordScriptProcess] Started recording.`);
 
-		this.process = exec(`/Users/tkasperek/.config/dictate/.venv/bin/python transcribe.py`, {
+		const python = getPythonInterpreter(this.logger);
+		const script = path.join(environment.assetsPath, 'transcribe.py');
+		this.process = exec(`${python} ${script}`, {
 			cwd: environment.assetsPath,
 		});
 

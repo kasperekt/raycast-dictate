@@ -9,7 +9,7 @@
 
 # Desired Python interpreter (override with: make PYTHON=/path/to/python3.12 install)
 PYTHON ?= python3.12
-VENV := /Users/tkasperek/.config/dictate/.venv
+VENV := $(HOME)/.config/dictate/.venv
 BIN := $(VENV)/bin
 PY := $(BIN)/python
 PIP := $(BIN)/pip
@@ -30,6 +30,8 @@ help:
 	@echo "  show      - Show Python & pip location/version in venv"
 
 $(VENV)/pyvenv.cfg:
+	@# Ensure parent directory exists (python -m venv doesn't create nested parents)
+	@mkdir -p $(dir $(VENV))
 	@if ! command -v $(PYTHON) >/dev/null 2>&1; then \
 		echo "Error: $(PYTHON) not found. Install Python 3.12 (e.g. with pyenv) or run 'make PYTHON=...'"; \
 		exit 1; \

@@ -1,3 +1,4 @@
 {
-    "python.defaultInterpreterPath": "/Users/tkasperek/.config/dictate/.venv/bin/python"
+    // Python interpreter for this workspace (created via `make install`)
+    "python.defaultInterpreterPath": "${env:HOME}/.config/dictate/.venv/bin/python"
 }
