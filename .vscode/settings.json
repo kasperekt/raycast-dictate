@@ -1,4 +1,4 @@
 {
     // Python interpreter for this workspace (created via `make install`)
-    "python.defaultInterpreterPath": "${env:HOME}/.config/dictate/.venv/bin/python"
+    "python.defaultInterpreterPath": "${env:HOME}/.config/raycast-dictate/.venv/bin/python"
 }
