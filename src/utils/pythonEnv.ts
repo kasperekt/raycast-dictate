@@ -11,8 +11,8 @@ export const PYTHON_INTERPRETER = path.join(VENV_DIR, 'bin', 'python');
  * Return the Python interpreter path, logging a note if it's missing.
  */
 export function getPythonInterpreter(logger?: Logger): string {
-  if (!fs.existsSync(PYTHON_INTERPRETER)) {
-    logger?.log('missing_interpreter', { path: PYTHON_INTERPRETER, hint: "Run 'make install'" });
-  }
-  return PYTHON_INTERPRETER;
+	if (!fs.existsSync(PYTHON_INTERPRETER)) {
+		logger?.log('missing_interpreter', { path: PYTHON_INTERPRETER, hint: "Run 'make install'" });
+	}
+	return PYTHON_INTERPRETER;
 }

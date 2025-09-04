@@ -1,13 +1,13 @@
 {
 	"$schema": "https://www.raycast.com/schemas/extension.json",
-	"name": "dictate",
+	"name": "raycast-dictate",
 	"title": "Dictate",
 	"description": "Helper extension that lets you dictate messages using locally-hosted AI models for STT.",
 	"icon": "icon.png",
 	"platforms": [
 		"macOS"
 	],
-	"author": "tkasperek",
+	"author": "kasperekt",
 	"license": "MIT",
 	"commands": [
 		{
