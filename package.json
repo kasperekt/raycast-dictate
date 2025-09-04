@@ -15,17 +15,7 @@
 			"title": "Dictate",
 			"subtitle": "Dictate using STT model",
 			"description": "Process audio input and transcribe it to text.",
-			"mode": "view",
-			"preferences": [
-				{
-					"title": "Temporary WAV Directory",
-					"name": "tmp_wav_directory",
-					"type": "textfield",
-					"description": "Path to temporary WAV directory (e.g., /tmp/raycast-dictate/)",
-					"required": false,
-					"default": "/tmp/raycast-dictate/audio"
-				}
-			]
+			"mode": "view"
 		}
 	],
 	"preferences": [

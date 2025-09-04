@@ -1,20 +1,13 @@
 import { ChildProcess, spawn } from 'node:child_process';
-import path from 'node:path';
-import { getPythonInterpreter } from './pythonEnv';
+import { getLogPath, getPythonInterpreter, TRANSCRIBE_SCRIPT_PATH } from './env';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { getPreferenceValues, environment } from '@raycast/api';
+import { environment } from '@raycast/api';
 import { Logger } from './logger';
-import { GlobalPreferences } from './types';
 
 export type LoadingState = 'idle' | 'initializing' | 'listening' | 'processing' | 'generating' | 'ready' | 'error';
 type ChildProcessUpdate =
 	| { status: 'state_change'; state: LoadingState; payload?: unknown }
 	| { status: 'error' | 'info'; message: string };
-
-export interface DictationPreferences extends GlobalPreferences {
-	tmp_wav_directory: string;
-	log_file_path?: string;
-}
 
 export class RecordScriptProcess {
 	onFinishCallback: ((text: string) => void) | null;
@@ -27,14 +20,10 @@ export class RecordScriptProcess {
 	private firstStdoutAt?: number;
 	private readyAt?: number;
 
-	// Cache script path (assetsPath is stable during runtime)
-	private static scriptPath = path.join(environment.assetsPath, 'transcribe.py');
-
 	constructor() {
-		const { log_file_path } = getPreferenceValues<DictationPreferences>();
 		this.onFinishCallback = null;
 		this.onLoadingCallback = null;
-		this.logger = new Logger(log_file_path, environment.isDevelopment);
+		this.logger = new Logger(getLogPath(), environment.isDevelopment);
 	}
 
 	onFinish(callback: (text: string) => void) {
@@ -52,11 +41,10 @@ export class RecordScriptProcess {
 			return;
 		}
 		const python = getPythonInterpreter(this.logger);
-		const script = RecordScriptProcess.scriptPath;
 		this.spawnStart = globalThis.process.hrtime.bigint();
-		this.logger.log('spawn_start', { script });
+		this.logger.log('spawn_start', { script: TRANSCRIBE_SCRIPT_PATH });
 		// Use spawn for lower overhead and streaming output without shell wrapping.
-		this.process = spawn(python, [script], {
+		this.process = spawn(python, [TRANSCRIBE_SCRIPT_PATH], {
 			cwd: environment.assetsPath,
 			stdio: ['pipe', 'pipe', 'pipe'],
 		});
