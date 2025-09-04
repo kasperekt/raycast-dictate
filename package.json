@@ -1,60 +1,63 @@
 {
-  "$schema": "https://www.raycast.com/schemas/extension.json",
-  "name": "dictate",
-  "title": "Dictate",
-  "description": "Helper extension that lets you dictate messages using locally-hosted AI models for STT.",
-  "icon": "extension-icon.png",
-  "author": "tkasperek",
-  "license": "MIT",
-  "commands": [
-    {
-      "name": "dictate",
-      "title": "Dictate",
-      "subtitle": "Dictate using STT model",
-      "description": "Process audio input and transcribe it to text.",
-      "mode": "view",
-      "preferences": [
-        {
-          "title": "Temporary WAV Directory",
-          "name": "tmp_wav_directory",
-          "type": "textfield",
-          "description": "Path to temporary WAV directory (e.g., /tmp/raycast-dictate/)",
-          "required": false,
-          "default": "/tmp/raycast-dictate/audio"
-        }
-      ]
-    }
-  ],
-  "preferences": [
-    {
-      "title": "Log File Path",
-      "name": "log_file_path",
-      "type": "textfield",
-      "description": "Path to log file (e.g., /tmp/raycast-dictate/)",
-      "required": false,
-      "default": "/tmp/raycast-dictate/"
-    }
-  ],
-  "dependencies": {
-    "@raycast/api": "^1.102.6",
-    "@raycast/utils": "^1.17.0",
-    "dedent": "^1.6.0"
-  },
-  "devDependencies": {
-    "@raycast/eslint-config": "^2.0.4",
-    "@types/node": "22.13.10",
-    "@types/react": "19.0.10",
-    "eslint": "^9.22.0",
-    "prettier": "^3.5.3",
-    "typescript": "^5.8.2"
-  },
-  "scripts": {
-    "build": "ray build",
-    "dev": "ray develop",
-    "fix-lint": "ray lint --fix",
-    "lint": "ray lint",
-    "prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1",
-    "publish": "npx @raycast/api@latest publish",
-    "postinstall": "make venv && make install"
-  }
+	"$schema": "https://www.raycast.com/schemas/extension.json",
+	"name": "dictate",
+	"title": "Dictate",
+	"description": "Helper extension that lets you dictate messages using locally-hosted AI models for STT.",
+	"icon": "icon.png",
+	"platforms": [
+		"macOS"
+	],
+	"author": "tkasperek",
+	"license": "MIT",
+	"commands": [
+		{
+			"name": "dictate",
+			"title": "Dictate",
+			"subtitle": "Dictate using STT model",
+			"description": "Process audio input and transcribe it to text.",
+			"mode": "view",
+			"preferences": [
+				{
+					"title": "Temporary WAV Directory",
+					"name": "tmp_wav_directory",
+					"type": "textfield",
+					"description": "Path to temporary WAV directory (e.g., /tmp/raycast-dictate/)",
+					"required": false,
+					"default": "/tmp/raycast-dictate/audio"
+				}
+			]
+		}
+	],
+	"preferences": [
+		{
+			"title": "Log File Path",
+			"name": "log_file_path",
+			"type": "textfield",
+			"description": "Path to log file (e.g., /tmp/raycast-dictate/)",
+			"required": false,
+			"default": "/tmp/raycast-dictate/"
+		}
+	],
+	"dependencies": {
+		"@raycast/api": "^1.102.6",
+		"@raycast/utils": "^1.17.0",
+		"dedent": "^1.6.0"
+	},
+	"devDependencies": {
+		"@raycast/eslint-config": "^2.0.4",
+		"@types/node": "22.13.10",
+		"@types/react": "19.0.10",
+		"eslint": "^9.22.0",
+		"prettier": "^3.5.3",
+		"typescript": "^5.8.2"
+	},
+	"scripts": {
+		"build": "ray build",
+		"dev": "ray develop",
+		"fix-lint": "ray lint --fix",
+		"lint": "ray lint",
+		"prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1",
+		"publish": "npx @raycast/api@latest publish",
+		"postinstall": "make venv && make install"
+	}
 }
