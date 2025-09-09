@@ -4,9 +4,15 @@ Helper extension that lets you dictate messages using locally-hosted AI models f
 
 ## Quick Setup
 
+To install application, first clone this repository and then run the command below:
+
 ```bash
 PYTHON=$(which python3) npm install && npm run build
 ```
+
+Now you should be able to open Raycast and type "Dictate" and see this application to show up.
+
+Note: If the application doesn't show up in the Raycast, try running `npm run dev`, then turning the dev mode off and run `npm run build` again.
 
 ## Python Virtual Environment
 
